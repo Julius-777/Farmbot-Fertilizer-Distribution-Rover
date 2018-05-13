@@ -1,3 +1,11 @@
+#Miscellaneous
+data/
+data_sets/
+graph_log/
+graph_log/2
+savedh5/
+
+*.png
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -103,4 +111,3 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-
