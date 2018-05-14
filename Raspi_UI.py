@@ -8,6 +8,7 @@ CENTRE_x = int(60)
 CENTRE_y = int(150)
 SUCCESSFUL_EXCECUTION = 1
 DEFAULT_MODE = 1
+DISPLAY_ON = True # display the stages in plant recognition on terminal
 
 ser = serial.Serial(port, baudrate, timeout=0.1) # Serial comms arduino <--> Raspi
 pan_pos = CENTRE_x
@@ -125,7 +126,7 @@ class UserCmdLine:
         keyboard.add_hotkey('left', move_rover, args=('turn', 'left'))
         keyboard.add_hotkey('right', move_rover, args=('turn', 'right'))
 
-def process_user_input(terminal, cnn_input):
+def process_user_input(terminal, cnn):
 
     new_line = terminal.get_message()
     #Check if command was a mode setting 1,2 or 3
@@ -148,7 +149,9 @@ def process_user_input(terminal, cnn_input):
     # Check if Mode ==  Vision Mode
     else:
         if new_line == "detect":
-            pass
+            data_generator = cnn.prepare_images(cnn.get_data_path(), None)
+            predictions = cnn.get_predictions(data_generator, not(DISPLAY_ON))
+            print(predictions)
         else:
             print("Invalid command! Use [detect]")
 

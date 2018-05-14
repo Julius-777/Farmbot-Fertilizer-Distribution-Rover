@@ -40,12 +40,21 @@ class PlantDetection:
                 class_mode=mode)
         return self.test_generator
 
-    # evaluate loaded model on prepared data from generator
+    # evaluate loaded model on prepared data from generator Note: Only works when
+    #    input data [subdirectories] matches the number of classes == 4
     def test_model(self, generator, display):
         evaluations = self.restoredModel.evaluate_generator(generator)
         if display == True:
             print("loss: %5f, accuracy: %5f" % (evaluations[0], evaluations[1]))
         return evaluations
+
+    # Get all classfication labels
+    def get_available_classes(self):
+        return self.class_dictionary
+
+    # Get path to saved pictures from pi camera
+    def get_data_path(self):
+        return eval_dataset
 
     # get predicted values for a set of data
     def get_predictions(self, generator, display):
@@ -63,9 +72,6 @@ class PlantDetection:
                     % (self.class_dictionary.get(correct_labels[i]), result[0],
                         result[1]))
         return list_of_results
-
-        def get_available_classes(self):
-            return self.class_dictionary
 
 if __name__ == "__main__":
     main()
