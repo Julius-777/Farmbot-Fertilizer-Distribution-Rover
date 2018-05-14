@@ -5,11 +5,11 @@ import numpy as np
 import os
 
 IMAGE_SIZE = 150 # Dimensions of loaded image
-BATCH_SIZE = 24
-main_path = 'C:\\Users\\jjmiy_000\\Documents\\REPOSITORY' # root directory
+BATCH_SIZE = 5
+main_path = 'C:\\Users\\jjmiy_000\\Documents\\Github\\' # root directory
 # path to load the model that will be restored
-saved_model = os.path.join(main_path, 'savedh5\cnn_model.h5')
-# path to model evaluating data
+saved_direc = os.path.join(os.getcwd(), 'savedh5\cnn_model.h5')
+# path to directory containing images to evaluate
 eval_dataset = os.path.join(main_path, 'eval_dataset')
 
 # all new operations will be in test mode from now on
@@ -21,43 +21,51 @@ class PlantDetection:
         # Configuration: Rescale RGB values of testing data
         self.test_gen = ImageDataGenerator(rescale=1.0 / 255,
                                     data_format='channels_last')
+        # get dictionary of classes and invert dictionary to {0:"label_name", ...}
+        self.class_dictionary = {0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Tomato"}
         # load saved model
-        self.restoredModel = models.load_model(saved_model)
+        self.restoredModel = models.load_model(saved_direc)
         print("Loaded model from disk")
 
+    def get_available_classes(self):
+            return self.class_dictionary
+
     # Prepare data as suitable input for Model
-    def prepare_images(self, directory, total):
-        self.test_generator = test_gen.flow_from_directory(
+    def prepare_images(self, directory, mode):
+        self.test_generator = self.test_gen.flow_from_directory(
                 directory,
                 target_size=(IMAGE_SIZE, IMAGE_SIZE),
-                batch_size=total,
+                batch_size=BATCH_SIZE,
                 shuffle=False,
-                class_mode='categorical')
+                class_mode=mode)
         return self.test_generator
 
     # evaluate loaded model on prepared data from generator
     def test_model(self, generator, display):
-        evaluations = restoredModel.evaluate_generator(generator)
-        if display == 1:
+        evaluations = self.restoredModel.evaluate_generator(generator)
+        if display == True:
             print("loss: %5f, accuracy: %5f" % (evaluations[0], evaluations[1]))
         return evaluations
 
-    # get predicted values
+    # get predicted values for a set of data
     def get_predictions(self, generator, display):
         predictions_array = self.restoredModel.predict_generator(generator) # numpy array of predicions
         predicted_labels = predictions_array.argmax(axis=-1) # predicted class/label for each image
-        # get dictionary of classes and invert dictionary to {0:"label_name", ...}
-        self.class_dictionary = {v: k for k, v in generator.class_indices.items()}
-        correct_labels = generator.classes # get verified labels of input test data
+        list_of_results = [] # Hold predicted labels with corresponding scores
 
-        if display == 1: # display the predictions on screen
-            for i, prediction in zip(range(len(predicted_labels)), predicted_labels):
-                print("prediction - %s | Actual label - %s | Score: [%5f]" %
-                    (self.class_dictionary.get(prediction),
-                     self.class_dictionary.get(correct_labels[i]),
-                     max(predictions_array[i])))
+        for i, prediction in zip(range(len(predicted_labels)), predicted_labels):
+            result = (self.class_dictionary.get(prediction), max(predictions_array[i]))
+            list_of_results.append(result)
+            # display the predictions on screen
+            if display == True:
+                correct_labels = generator.classes # get verified labels of input test data
+                print(" Correct label - %s, Predicted label - %s, Score: [%5f]"
+                    % (self.class_dictionary.get(correct_labels[i]), result[0],
+                        result[1]))
+        return list_of_results
 
-        return predicted_labels, predictions_array
+        def get_available_classes(self):
+            return self.class_dictionary
 
 if __name__ == "__main__":
     main()

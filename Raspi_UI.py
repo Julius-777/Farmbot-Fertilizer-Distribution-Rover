@@ -126,12 +126,12 @@ class UserCmdLine:
         keyboard.add_hotkey('right', move_rover, args=('turn', 'right'))
 
 def process_user_input(terminal, cnn_input):
-  
+
     new_line = terminal.get_message()
     #Check if command was a mode setting 1,2 or 3
     if is_number(new_line):
         terminal.set_mode(new_line)
-        continue
+        return 0
     msg = new_line.split(' ')
     #Check if Mode == Demo Mode and command is valid
     if terminal.get_mode() == list_modes.get(DEFAULT_MODE):

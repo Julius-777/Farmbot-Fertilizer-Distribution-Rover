@@ -67,7 +67,7 @@ inferenceModel.add(Dropout(DROPOUT_2))
 
 # FCL 2 - Flatten to 1D -> Final FCL -> softmax
 inferenceModel.add(Dense(CLASSES))
-inferenceModel.add(Activation('sigmoid')) # produces error as a probability
+inferenceModel.add(Activation('softmax')) # produces error as a probability
 
 optimizer = optimizers.Adam(lr=LEARNING_RATE, decay=DECAY_RATE)
 # Configure training process for Multi-class classification
