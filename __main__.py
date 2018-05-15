@@ -1,8 +1,7 @@
 import Raspi_UI
 import CNN_eval as ImageDetection
 import time, os
-
-
+import time
 
 def main():
     terminal = Raspi_UI.UserCmdLine()

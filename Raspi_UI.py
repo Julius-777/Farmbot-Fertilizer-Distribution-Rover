@@ -2,7 +2,7 @@ import serial
 import time
 import keyboard
 
-port = "COM4"
+port = "COM5"
 baudrate=9600
 CENTRE_x = int(60)
 CENTRE_y = int(150)
@@ -149,7 +149,10 @@ def process_user_input(terminal, cnn):
     # Check if Mode ==  Vision Mode
     else:
         if new_line == "detect":
-            data_generator = cnn.prepare_images(cnn.get_data_path(), None)
+            #direc = cnn.get_data_path()
+            # data_generator = cnn.prepare_images(directory=direc, class_mode=None)
+            image_array = cnn.get_image_data() # Get piCam image as numpy array
+            data_generator = cnn.prepare_images(input=image_array)
             predictions = cnn.get_predictions(data_generator, not(DISPLAY_ON))
             print(predictions)
         else:

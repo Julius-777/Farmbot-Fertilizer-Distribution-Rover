@@ -1,8 +1,10 @@
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import Sequential, models, utils
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+from picamera.array import PiRGBArray
+from picamera import PiCamera
+import os, time, cv2
 import numpy as np
-import os
 
 IMAGE_SIZE = 150 # Dimensions of loaded image
 BATCH_SIZE = 5
@@ -31,14 +33,25 @@ class PlantDetection:
             return self.class_dictionary
 
     # Prepare data as suitable input for Model
-    def prepare_images(self, directory, mode):
-        self.test_generator = self.test_gen.flow_from_directory(
-                directory,
-                target_size=(IMAGE_SIZE, IMAGE_SIZE),
-                batch_size=BATCH_SIZE,
-                shuffle=False,
-                class_mode=mode)
+    def prepare_images(self, **args):
+        try:
+            # for images stored in a directory as jpeg
+            directory = args["directory"]
+            mode = args["class_mode"]
+            self.test_generator = self.test_gen.flow_from_directory(
+                    directory,
+                    target_size=(IMAGE_SIZE, IMAGE_SIZE),
+                    batch_size=BATCH_SIZE,
+                    shuffle=False,
+                    class_mode=mode)
+        # for image data recieve as raw numpy array directly from camera
+        except KeyError:
+            data = args["input"]
+            self.test_generator = self.test_gen.flow(data, shuffle=False,
+                 batch_size=BATCH_SIZE)
+
         return self.test_generator
+
 
     # evaluate loaded model on prepared data from generator Note: Only works when
     #    input data [subdirectories] matches the number of classes == 4
@@ -72,6 +85,17 @@ class PlantDetection:
                     % (self.class_dictionary.get(correct_labels[i]), result[0],
                         result[1]))
         return list_of_results
+
+    # Get image data from camera to input to inference model
+    def get_image_data(self):
+        with PiCamera as pi_cam:
+            pi_cam = PiCamera()    # initialize the raspi camera
+            pi_cam.resolution = (150, 150)
+            raw = PiRGBArray(pi_cam, size=(150, 150)) # Capture camera stream directly
+            time.sleep(0.2) # wait for camera sensor activation
+            pi_cam.capture(raw, format='rgb') # Captured image in rgb format
+            frame = raw.array # get image as numpy array
+        return frame
 
 if __name__ == "__main__":
     main()
