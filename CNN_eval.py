@@ -1,16 +1,16 @@
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import Sequential, models, utils
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
-from picamera.array import PiRGBArray
-from picamera import PiCamera
-import os, time, cv2
+#from picamera.array import PiRGBArray
+#from picamera import PiCamera
+import os, time#, cv2
 import numpy as np
 
-IMAGE_SIZE = 150 # Dimensions of loaded image
+IMAGE_SIZE = 32 # Dimensions of loaded image
 BATCH_SIZE = 5
 main_path = 'C:\\Users\\jjmiy_000\\Documents\\Github\\' # root directory
 # path to load the model that will be restored
-saved_direc = os.path.join(os.getcwd(), 'savedh5\cnn_model.h5')
+saved_direc = os.path.join(os.getcwd(), 'savedh5\cnn_model_4.h5')
 # path to directory containing images to evaluate
 eval_dataset = os.path.join(main_path, 'eval_dataset')
 
@@ -35,23 +35,22 @@ class PlantDetection:
     # Prepare data as suitable input for Model
     def prepare_images(self, **args):
         try:
-            # for images stored in a directory as jpeg
+            # Get image data from a directory
             directory = args["directory"]
             mode = args["class_mode"]
-            self.test_generator = self.test_gen.flow_from_directory(
+            test_generator = self.test_gen.flow_from_directory(
                     directory,
                     target_size=(IMAGE_SIZE, IMAGE_SIZE),
                     batch_size=BATCH_SIZE,
                     shuffle=False,
                     class_mode=mode)
-        # for image data recieve as raw numpy array directly from camera
+            return test_generator
+        # Get image data directly from pi camera
         except KeyError:
-            data = args["input"]
-            self.test_generator = self.test_gen.flow(data, shuffle=False,
-                 batch_size=BATCH_SIZE)
-
-        return self.test_generator
-
+            data = None
+            if args["from_camera"] == True:
+                data = self.get_image_data()
+            return data # return numpy array
 
     # evaluate loaded model on prepared data from generator Note: Only works when
     #    input data [subdirectories] matches the number of classes == 4
@@ -88,13 +87,13 @@ class PlantDetection:
 
     # Get image data from camera to input to inference model
     def get_image_data(self):
-        with PiCamera as pi_cam:
-            pi_cam = PiCamera()    # initialize the raspi camera
-            pi_cam.resolution = (150, 150)
-            raw = PiRGBArray(pi_cam, size=(150, 150)) # Capture camera stream directly
-            time.sleep(0.2) # wait for camera sensor activation
-            pi_cam.capture(raw, format='rgb') # Captured image in rgb format
-            frame = raw.array # get image as numpy array
+##        with PiCamera as pi_cam:
+##            pi_cam = PiCamera()    # initialize the raspi camera
+##            pi_cam.resolution = (150, 150)
+##            raw = PiRGBArray(pi_cam, size=(150, 150)) # Capture camera stream directly
+##            time.sleep(0.2) # wait for camera sensor activation
+##            pi_cam.capture(raw, format='rgb') # Captured image in rgb format
+##            frame = raw.array # get image as numpy array
         return frame
 
 if __name__ == "__main__":

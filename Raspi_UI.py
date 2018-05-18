@@ -2,7 +2,7 @@ import serial
 import time
 import keyboard
 
-port = "COM5"
+ports = ["COM5","COM4","/dev/serial0"]
 baudrate=9600
 CENTRE_x = int(60)
 CENTRE_y = int(150)
@@ -10,10 +10,12 @@ SUCCESSFUL_EXCECUTION = 1
 DEFAULT_MODE = 1
 DISPLAY_ON = True # display the stages in plant recognition on terminal
 
-ser = serial.Serial(port, baudrate, timeout=0.1) # Serial comms arduino <--> Raspi
+ser = serial.Serial(ports[1], baudrate, timeout=0.1) # Serial comms arduino <--> Raspi
 pan_pos = CENTRE_x
 tilt_pos = CENTRE_y
 list_modes = {1 : "<Demo Mode>", 2: "<Pump Mode>", 3: "<Vision Mode>"}
+LOG = {"Plant": None, "Stage": None, "used_fertilizer": None,
+                            "Tank_Level": 1500} # format of logging message
 
 # Read serial buffer until empty
 def read_until_empty():
@@ -137,26 +139,27 @@ def process_user_input(terminal, cnn):
     #Check if Mode == Demo Mode and command is valid
     if terminal.get_mode() == list_modes.get(DEFAULT_MODE):
         if msg[0] == 'Fertilize' and msg[1] == 'Row':
-            fertilize_row()
+            fertilize_row() # conduct sequence then send log data
         else:
             print("Invalid command! Use cmd[Fertilize Row]")
     #Check if Mode == Pump Mode and command is valid
     elif terminal.get_mode() == list_modes.get(2):
         if is_number(msg[0]) and msg[1] == "ml":
             pump_liquid(msg[0])
+            LOG["Tank_level"] -=  msg[0]
         else:
             print("Invalid command! Must have formart e.g. [10 ml]")
     # Check if Mode ==  Vision Mode
     else:
         if new_line == "detect":
-            #direc = cnn.get_data_path()
-            # data_generator = cnn.prepare_images(directory=direc, class_mode=None)
-            image_array = cnn.get_image_data() # Get piCam image as numpy array
-            data_generator = cnn.prepare_images(input=image_array)
-            predictions = cnn.get_predictions(data_generator, not(DISPLAY_ON))
+            direc = cnn.get_data_path()
+            data_generator = cnn.prepare_images(directory=direc,
+                                                class_mode="categorical")
+            predictions = cnn.get_predictions(data_generator, DISPLAY_ON)
             print(predictions)
         else:
             print("Invalid command! Use [detect]")
+    return LOG
 
 if __name__ == "__main__":
     main()

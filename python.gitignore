@@ -1,10 +1,10 @@
 #Miscellaneous
-data/
+augmented_dataset/
 data_sets/
-graph_log/
-graph_log/2
+Tensorboard Graphs/
 savedh5/
 
+*.jpg
 *.png
 # Byte-compiled / optimized / DLL files
 __pycache__/
