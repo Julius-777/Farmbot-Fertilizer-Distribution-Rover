@@ -1,8 +1,9 @@
+#!/usr/bin/python
 import serial
 import time
-import keyboard
+#import keyboard
 
-port = "COM5"
+port = "/dev/serial0"
 baudrate=9600
 CENTRE_x = int(60)
 CENTRE_y = int(150)
@@ -14,6 +15,8 @@ ser = serial.Serial(port, baudrate, timeout=0.1) # Serial comms arduino <--> Ras
 pan_pos = CENTRE_x
 tilt_pos = CENTRE_y
 list_modes = {1 : "<Demo Mode>", 2: "<Pump Mode>", 3: "<Vision Mode>"}
+LOG = {"Plant": None, "Stage": None, "used_fertilizer": None,
+                            "Tank_Level": 1500} # format of logging message
 
 # Read serial buffer until empty
 def read_until_empty():
@@ -94,19 +97,19 @@ class UserCmdLine:
     # Prompt User for a command
     def get_message(self):
         prompt = self.current_mode + " Enter Command: "
-        return input(prompt)
+        return raw_input(prompt)
 
     # Select mode. Modes = {Demo, Pump, Vision}
     def set_mode(self, mode):
         try:
             self.current_mode = list_modes[int(mode)]
-            keyboard.unhook_all_hotkeys()
+            #keyboard.unhook_all_hotkeys()
             if int(mode) == 1:
                 self.init_move()
             else:
                 self.init_pump()
         except KeyError:
-            print("Invalid command! select a mode with keys [1,2 or 3] ")
+            print "Invalid command! select a mode with keys [1,2 or 3] "
 
     # Get current mode setting
     def get_mode(self):
@@ -114,18 +117,18 @@ class UserCmdLine:
 
     # Initialise hotkeys for controlling pump orientation
     def init_pump(self):
-        keyboard.add_hotkey('up', move_pump_up)
-        keyboard.add_hotkey('down', move_pump_down)
-        keyboard.add_hotkey('left', move_pump_left)
-        keyboard.add_hotkey('right', move_pump_right)
-
+##      keyboard.add_hotkey('up', move_pump_up)
+##      keyboard.add_hotkey('down', move_pump_down)
+##      keyboard.add_hotkey('left', move_pump_left)
+##      keyboard.add_hotkey('right', move_pump_right)
+        pass
     # Initialise hotkeys for controlling Rover in Demo mode
     def init_move(self):
-        keyboard.add_hotkey('up', move_rover, args=('forward', '1 cm'))
-        keyboard.add_hotkey('down', move_rover, args=('backward', '1 cm'))
-        keyboard.add_hotkey('left', move_rover, args=('turn', 'left'))
-        keyboard.add_hotkey('right', move_rover, args=('turn', 'right'))
-
+##      keyboard.add_hotkey('up', move_rover, args=('forward', '1 cm'))
+##      keyboard.add_hotkey('down', move_rover, args=('backward', '1 cm'))
+##      keyboard.add_hotkey('left', move_rover, args=('turn', 'left'))
+##      keyboard.add_hotkey('right', move_rover, args=('turn', 'right'))
+        pass
 def process_user_input(terminal, cnn):
 
     new_line = terminal.get_message()
@@ -139,24 +142,25 @@ def process_user_input(terminal, cnn):
         if msg[0] == 'Fertilize' and msg[1] == 'Row':
             fertilize_row()
         else:
-            print("Invalid command! Use cmd[Fertilize Row]")
+            print "Invalid command! Use cmd[Fertilize Row]"
     #Check if Mode == Pump Mode and command is valid
     elif terminal.get_mode() == list_modes.get(2):
         if is_number(msg[0]) and msg[1] == "ml":
             pump_liquid(msg[0])
         else:
-            print("Invalid command! Must have formart e.g. [10 ml]")
+            print "Invalid command! Must have formart e.g. [10 ml]"
     # Check if Mode ==  Vision Mode
     else:
         if new_line == "detect":
-            #direc = cnn.get_data_path()
-            # data_generator = cnn.prepare_images(directory=direc, class_mode=None)
-            image_array = cnn.get_image_data() # Get piCam image as numpy array
-            data_generator = cnn.prepare_images(input=image_array)
-            predictions = cnn.get_predictions(data_generator, not(DISPLAY_ON))
-            print(predictions)
+            predictions = [0,0]
+            # Accept detection with a score above 80% accuracy
+            while predictions[1] < 0.80:
+                image_array = cnn.prepare_images(from_camera=True) # Get piCam image as numpy array
+                predictions = cnn.get_predictions(image_array,
+                                                  data_type="raw", display=False)
+                time.sleep(0.3)
+            print "Predicted label - %s, Score: [%5f]" % (predictions[0],
+                                                          predictions[1])
+            
         else:
-            print("Invalid command! Use [detect]")
-
-if __name__ == "__main__":
-    main()
+            print "Invalid command! Use [detect]"

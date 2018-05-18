@@ -1,3 +1,4 @@
+ #!/usr/bin/python
 import Raspi_UI
 import CNN_eval as ImageDetection
 import time, os

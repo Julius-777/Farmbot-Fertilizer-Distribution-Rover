@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import Sequential, models, utils
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
@@ -8,9 +9,9 @@ import numpy as np
 
 IMAGE_SIZE = 150 # Dimensions of loaded image
 BATCH_SIZE = 5
-main_path = 'C:\\Users\\jjmiy_000\\Documents\\Github\\' # root directory
+main_path = '/Home/pi/Kilimanjaro' # root directory
 # path to load the model that will be restored
-saved_direc = os.path.join(os.getcwd(), 'savedh5\cnn_model.h5')
+saved_direc = os.path.join(os.getcwd(), 'cnn_model_4.h5')
 # path to directory containing images to evaluate
 eval_dataset = os.path.join(main_path, 'eval_dataset')
 
@@ -28,6 +29,8 @@ class PlantDetection:
         # load saved model
         self.restoredModel = models.load_model(saved_direc)
         print("Loaded model from disk")
+        self.camera = PiCamera(resolution=(160, 160), framerate=30) 
+        print("Initialize camera sensor...")
 
     def get_available_classes(self):
             return self.class_dictionary
@@ -35,22 +38,23 @@ class PlantDetection:
     # Prepare data as suitable input for Model
     def prepare_images(self, **args):
         try:
-            # for images stored in a directory as jpeg
+            # Get image data from a directory
             directory = args["directory"]
             mode = args["class_mode"]
-            self.test_generator = self.test_gen.flow_from_directory(
+            test_generator = self.test_gen.flow_from_directory(
                     directory,
                     target_size=(IMAGE_SIZE, IMAGE_SIZE),
                     batch_size=BATCH_SIZE,
                     shuffle=False,
                     class_mode=mode)
-        # for image data recieve as raw numpy array directly from camera
+            return test_generator
+        # Get image data directly from pi camera
         except KeyError:
-            data = args["input"]
-            self.test_generator = self.test_gen.flow(data, shuffle=False,
-                 batch_size=BATCH_SIZE)
+            data = None
+            if args["from_camera"] == True:
+                data = self.get_image_data()
 
-        return self.test_generator
+        return data
 
 
     # evaluate loaded model on prepared data from generator Note: Only works when
@@ -58,7 +62,7 @@ class PlantDetection:
     def test_model(self, generator, display):
         evaluations = self.restoredModel.evaluate_generator(generator)
         if display == True:
-            print("loss: %5f, accuracy: %5f" % (evaluations[0], evaluations[1]))
+            print "loss: %5f, accuracy: %5f" % (evaluations[0], evaluations[1])
         return evaluations
 
     # Get all classfication labels
@@ -70,32 +74,46 @@ class PlantDetection:
         return eval_dataset
 
     # get predicted values for a set of data
-    def get_predictions(self, generator, display):
-        predictions_array = self.restoredModel.predict_generator(generator) # numpy array of predicions
+    def get_predictions(self, data, **args):
+        if args.get("data_type") == "generated":
+            # numpy array of predicions
+            predictions_array = self.restoredModel.predict_generator(data)
+        elif args.get("data_type") == "raw":
+            predictions_array = self.restoredModel.predict(data)
+        else:
+            print(args.get("data_type"), " is Invalid data_type for function")
+                                
         predicted_labels = predictions_array.argmax(axis=-1) # predicted class/label for each image
         list_of_results = [] # Hold predicted labels with corresponding scores
 
         for i, prediction in zip(range(len(predicted_labels)), predicted_labels):
             result = (self.class_dictionary.get(prediction), max(predictions_array[i]))
-            list_of_results.append(result)
             # display the predictions on screen
-            if display == True:
+            if args.get("display") == True and args.get("data_type")=="generated":
                 correct_labels = generator.classes # get verified labels of input test data
-                print(" Correct label - %s, Predicted label - %s, Score: [%5f]"
-                    % (self.class_dictionary.get(correct_labels[i]), result[0],
-                        result[1]))
-        return list_of_results
+                list_of_results.append(result)
+                print " Correct label - %s, Predicted label - %s,\
+                Score: [%5f]" % (self.class_dictionary.get(correct_labels[i]), result[0], result[1])
+            elif args.get("display") == True:
+		print predictions_array # scores for all classes
+              
+        return result
 
     # Get image data from camera to input to inference model
     def get_image_data(self):
-        with PiCamera as pi_cam:
-            pi_cam = PiCamera()    # initialize the raspi camera
-            pi_cam.resolution = (150, 150)
-            raw = PiRGBArray(pi_cam, size=(150, 150)) # Capture camera stream directly
-            time.sleep(0.2) # wait for camera sensor activation
-            pi_cam.capture(raw, format='rgb') # Captured image in rgb format
-            frame = raw.array # get image as numpy array
-        return frame
+        with PiRGBArray(self.camera, size=(32, 32)) as output:            
+            self.camera.capture(output, 'rgb', resize=(32, 32))
+            tensor = output.array*1. / 255 # Normalize rgb values
+            tensor = np.array([tensor.astype('float64')], dtype='float64')
+            output.truncate(0)
+            return tensor
+
+def main():
+    cnn = PlantDetection()
+    direc = cnn.get_data_path()
+    data_generator = cnn.prepare_images(directory=direc, class_mode=None)
+    predictions = cnn.get_predictions(data_generator, not(DISPLAY_ON))
+    print predictions
 
 if __name__ == "__main__":
     main()
