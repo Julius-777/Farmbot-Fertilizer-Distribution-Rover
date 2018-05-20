@@ -7,7 +7,7 @@ from picamera import PiCamera
 import os, time, cv2
 import numpy as np
 
-IMAGE_SIZE = 150 # Dimensions of loaded image
+IMAGE_SIZE = 32 # Dimensions of loaded image
 BATCH_SIZE = 5
 main_path = '/Home/pi/Kilimanjaro' # root directory
 # path to load the model that will be restored
@@ -39,7 +39,7 @@ class PlantDetection:
     def prepare_images(self, **args):
         try:
             # Get image data from a directory
-            directory = args["directory"]
+            directory = args["from_directory"]
             mode = args["class_mode"]
             test_generator = self.test_gen.flow_from_directory(
                     directory,
@@ -75,10 +75,10 @@ class PlantDetection:
 
     # get predicted values for a set of data
     def get_predictions(self, data, **args):
-        if args.get("data_type") == "generated":
+        if args.get("data_type") == "from_directory":
             # numpy array of predicions
             predictions_array = self.restoredModel.predict_generator(data)
-        elif args.get("data_type") == "raw":
+        elif args.get("data_type") == "from_camera":
             predictions_array = self.restoredModel.predict(data)
         else:
             print(args.get("data_type"), " is Invalid data_type for function")
@@ -89,7 +89,7 @@ class PlantDetection:
         for i, prediction in zip(range(len(predicted_labels)), predicted_labels):
             result = (self.class_dictionary.get(prediction), max(predictions_array[i]))
             # display the predictions on screen
-            if args.get("display") == True and args.get("data_type")=="generated":
+            if args.get("display") == True and args.get("data_type")=="from_directory":
                 correct_labels = generator.classes # get verified labels of input test data
                 list_of_results.append(result)
                 print " Correct label - %s, Predicted label - %s,\

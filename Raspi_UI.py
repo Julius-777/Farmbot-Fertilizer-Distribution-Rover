@@ -157,8 +157,9 @@ def process_user_input(terminal, cnn):
             while predictions[1] < 0.80:
                 image_array = cnn.prepare_images(from_camera=True) # Get piCam image as numpy array
                 predictions = cnn.get_predictions(image_array,
-                                                  data_type="raw", display=False)
-                time.sleep(0.3)
+                                                 data_type="from_directory",
+						 display=False)
+                time.sleep(0.3) # check 3 frames per second
             print "Predicted label - %s, Score: [%5f]" % (predictions[0],
                                                           predictions[1])
             
