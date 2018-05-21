@@ -1,9 +1,8 @@
 #!/usr/bin/python
 import serial
 import time
-#import keyboard
 
-port = "/dev/serial0"
+port = {1:"/dev/ttyUSB0", 2:"/dev/ttyUSB1"}
 baudrate=9600
 CENTRE_x = int(60)
 CENTRE_y = int(150)
@@ -11,7 +10,12 @@ SUCCESSFUL_EXCECUTION = 1
 DEFAULT_MODE = 1
 DISPLAY_ON = True # display the stages in plant recognition on terminal
 global s
-ser = serial.Serial(port, baudrate, timeout=0.1) # Serial comms arduino <--> Raspi
+# Serial comms arduino <--> Raspi
+try:
+    ser = serial.Serial(port[1], baudrate, timeout=0.1)
+except SerialException:
+    ser = serial.Serial(port[2], baudrate, timeout=0.1)
+
 pan_pos = CENTRE_x
 tilt_pos = CENTRE_y
 list_modes = {1 : "<Demo Mode>", 2: "<Pump Mode>", 3: "<Vision Mode>"}
@@ -49,10 +53,10 @@ class SystemControl:
     # Control rover movements using arrow keys
     def move_rover(self, cmd, param):
         if cmd == "forward":
-            ser.write(b"Move:forward:10 cm;")
+            ser.write(b"Move:forward:3 cm;")
 
         elif cmd == "backward":
-            ser.write(b"Move:backward:10 cm;")
+            ser.write(b"Move:backward:3 cm;")
 
         elif cmd == "turn" and param == "left":
             ser.write(b"Move:turn:left;")

@@ -91,7 +91,7 @@ def activate_UI(stdscr):
 	# Check if arrow key was pressed
         elif move_direction is not 'stop':
             # Send move command every 0.2 seconds 
-	    if time.time() - prev_time > 0.2:
+	    if time.time() - prev_time > 0.02:
             	RaspiUI.process_movements(move_direction, system, current_mode, stdscr)
 		prev_time = time.time()
 
