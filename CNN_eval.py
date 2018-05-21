@@ -11,7 +11,7 @@ IMAGE_SIZE = 32 # Dimensions of loaded image
 BATCH_SIZE = 5
 main_path = '/Home/pi/Kilimanjaro' # root directory
 # path to load the model that will be restored
-saved_direc = os.path.join(os.getcwd(), 'cnn_model_4.h5')
+saved_direc = os.path.join(os.getcwd(), 'cnn_model_3.h5')
 # path to directory containing images to evaluate
 eval_dataset = os.path.join(main_path, 'eval_dataset')
 
@@ -27,10 +27,11 @@ class PlantDetection:
         # get dictionary of classes and invert dictionary to {0:"label_name", ...}
         self.class_dictionary = {0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Tomato"}
         # load saved model
-        self.restoredModel = None #models.load_model(saved_direc)
+        self.restoredModel = models.load_model(saved_direc)
         print("Loaded model from disk")
-        self.camera = PiCamera(resolution=(160, 160), framerate=30) 
+        self.camera = PiCamera(resolution=(720, 720), framerate=15) 
         print("Initialize camera sensor...")
+        time.sleep(1)
 
     def get_available_classes(self):
             return self.class_dictionary
@@ -81,7 +82,7 @@ class PlantDetection:
         elif args.get("data_type") == "from_camera":
             predictions_array = self.restoredModel.predict(data)
         else:
-            print(args.get("data_type"), " is Invalid data_type for function")
+            return args.get("data_type") +  " is Invalid data_type for function"
                                 
         predicted_labels = predictions_array.argmax(axis=-1) # predicted class/label for each image
         list_of_results = [] # Hold predicted labels with corresponding scores
@@ -92,12 +93,12 @@ class PlantDetection:
             if args.get("display") == True and args.get("data_type")=="from_directory":
                 correct_labels = generator.classes # get verified labels of input test data
                 list_of_results.append(result)
-                print " Correct label - %s, Predicted label - %s,\
+                return " Correct label - %s, Predicted label - %s,\
                 Score: [%5f]" % (self.class_dictionary.get(correct_labels[i]), result[0], result[1])
             elif args.get("display") == True:
-		print predictions_array # scores for all classes
+		return  predictions_array # scores for all classes
               
-        return result
+        return result 
 
     # Get image data from camera to input to inference model
     def get_image_data(self):

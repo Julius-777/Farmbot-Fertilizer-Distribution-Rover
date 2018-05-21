@@ -61,7 +61,7 @@ def event_keys(stdscr, c, modes,):
     return isNewLine
 
 # Activte User interface for controlling System
-def activate_UI(stdscr):
+def activate_UI(stdscr, cnn, system):
     # Set default UI parameters
     global newline
     global current_mode
@@ -73,10 +73,6 @@ def activate_UI(stdscr):
     newline = ''
     prev_time = time.time() # last time an arrow key was pressed
     
-# Initialize image detection and System control class
-    cnn = ImageDetection.PlantDetection()
-    system = RaspiUI.SystemControl()
-
     # Initialize User Inferface Window    
     stdscr.clear()
     stdscr.refresh()
@@ -85,9 +81,9 @@ def activate_UI(stdscr):
     while c is not ord('q'):
         # New command message has been input
         if event_keys(stdscr, c, modes) is True:
-            #RaspiUI.process_user_input(cnn, newline, current_mode)
+            response = RaspiUI.process_user_input(cnn, newline, current_mode)
             newline = ''
-
+            stdscr.addstr(response + '\n' + current_mode + " Enter command ")
 	# Check if arrow key was pressed
         elif move_direction is not 'stop':
             # Send move command every 0.2 seconds 
@@ -99,7 +95,12 @@ def activate_UI(stdscr):
         c = stdscr.getch() # returns key press values
 
 def main():
-    wrapper(activate_UI) # Initialize and restores terminal before/after use
+    # Initialize image detection and System control class
+    cnn = ImageDetection.PlantDetection()
+    system = RaspiUI.SystemControl()
+
+    # Initialize and restores terminal before/after use
+    wrapper(activate_UI, cnn, system) 
 
 if __name__ == "__main__":
     main()

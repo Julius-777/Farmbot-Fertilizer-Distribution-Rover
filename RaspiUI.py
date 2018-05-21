@@ -127,18 +127,20 @@ def process_movements(direction, system, current_mode, st):
             system.move_pump_up()
 
 # Process typed user input commands from terminal
-def process_user_input(cnn, newline, current_mode):
+def process_user_input(cnn, new_line, current_mode):
     msg = new_line.split(' ')
     #Check if Mode == Demo Mode and command is valid
     if current_mode == list_modes.get(DEFAULT_MODE):
-        if msg[0] == 'Fertilize' and msg[1] == 'Row':
+        if msg[0] == 'fertilize' and msg[1] == 'row':
             fertilize_row()
+            return ''
         else:
-            return "Invalid command! Use cmd[Fertilize Row]"
+            return "Invalid command! Use cmd[fertilize row]"
     #Check if Mode == Pump Mode and command is valid
     elif current_mode == list_modes.get(2):
         if is_number(msg[0]) and msg[1] == "ml":
             pump_liquid(msg[0])
+            return ''
         else:
             return "Invalid command! Must have formart e.g. [10 ml]"
     # Check if Mode ==  Vision Mode
@@ -146,14 +148,14 @@ def process_user_input(cnn, newline, current_mode):
         if new_line == "detect":
             predictions = [0,0]
             # Accept detection with a score above 80% accuracy
-            while predictions[1] < 0.80:
+            while predictions[1] < 0.90:
                 image_array = cnn.prepare_images(from_camera=True) # Get piCam image as numpy array
                 predictions = cnn.get_predictions(image_array,
-                                                 data_type="from_directory",
-                                                 display=False)
+                                                 data_type="from_camera",
+                                                 display=True)# display all predictions
                 time.sleep(0.3) # check 3 frames per second
-            return "Predicted label - %s, Score: [%5f]" % (predictions[0],
-                                                          predictions[1])
+            #return  "Predicted label - %s, Score: [%5f]" % (predictions[0],
+            #                                              predictions[1])
 
         else:
             return "Invalid command! Use [detect]"
