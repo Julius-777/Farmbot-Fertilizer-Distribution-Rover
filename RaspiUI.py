@@ -10,7 +10,7 @@ CENTRE_y = int(150)
 SUCCESSFUL_EXCECUTION = 1
 DEFAULT_MODE = 1
 DISPLAY_ON = True # display the stages in plant recognition on terminal
-
+global s
 ser = serial.Serial(port, baudrate, timeout=0.1) # Serial comms arduino <--> Raspi
 pan_pos = CENTRE_x
 tilt_pos = CENTRE_y
@@ -47,37 +47,37 @@ def fertilize_row():
 # Control Movements of fertilizer system on rover
 class SystemControl:
     # Control rover movements using arrow keys
-    def move_rover(cmd, param):
-        if cmd is "forward":
+    def move_rover(self, cmd, param):
+        if cmd == "forward":
             ser.write(b"Move:forward:10 cm;")
 
-        elif cmd is "backward":
+        elif cmd == "backward":
             ser.write(b"Move:backward:10 cm;")
 
-        elif cmd is "turn" and param is"left":
+        elif cmd == "turn" and param == "left":
             ser.write(b"Move:turn:left;")
 
         else:
             ser.write(b"Move:turn:right;")
 
     # Move pump with right arrow
-    def move_pump_right():
-        global pan_pos
+    def move_pump_right(self):
+        global pan_pos, s
         if pan_pos >= 0:
             pan_pos -= 2
         message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
         ser.write(message.encode(encoding='UTF-8'))
 
     # Move pump with left arrow
-    def move_pump_left():
-        global pan_pos
+    def move_pump_left(self):
+        global pan_pos, s
         if pan_pos <= 140 :
            pan_pos += 2
         message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
         ser.write(message.encode(encoding='UTF-8'))
 
     # Move pump with down arrow
-    def move_pump_down():
+    def move_pump_down(self):
         global tilt_pos
         if tilt_pos >= 110:
             tilt_pos -= 2
@@ -85,7 +85,7 @@ class SystemControl:
         ser.write(message.encode(encoding='UTF-8'))
 
     # Move pump with up arrow
-    def move_pump_up():
+    def move_pump_up(self):
         global tilt_pos
         if tilt_pos <= 175:
             tilt_pos += 2
@@ -93,13 +93,15 @@ class SystemControl:
         ser.write(message.encode(encoding='UTF-8'))
 
 # Process arrow key presses from terminal to move peripherals
-def process_system_movements(direction, system, current_mode):
+def process_movements(direction, system, current_mode, st):
     # Demo Mode
-    if current_mode is list_modes[1]:
-        if direction is 'up': # Up arrow = forward
+    global s
+    s = st
+    if current_mode == list_modes[1]:
+        if direction == 'up': # Up arrow = forward
             system.move_rover('forward', None)
 
-        elif direction is 'down': # Down arrow = backward
+        elif direction == 'down': # Down arrow = backward
             system.move_rover('backward', None)
 
         else:
@@ -107,17 +109,17 @@ def process_system_movements(direction, system, current_mode):
             system.move_rover('turn', direction)
 
     # Pump or Vision Mode
-elif current_mode is list_modes[2] or current_mode is list_modes[3]:
-        if direction is 'left':
+    elif current_mode == list_modes[2] or  current_mode == list_modes[3]:
+        if direction == 'left':
             system.move_pump_left()
 
-        elif direction is 'right':
-            system.move_pump_left()
+        elif direction == 'right':
+            system.move_pump_right()
 
-        elif direction is 'up':
+        elif direction == 'up':
             system.move_pump_down() # Tilt is reversed
 
-        elif direction is 'down':
+        elif direction == 'down':
             system.move_pump_up()
 
 # Process typed user input commands from terminal

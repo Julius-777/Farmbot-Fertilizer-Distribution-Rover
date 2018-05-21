@@ -5,15 +5,15 @@ import time, os
 import curses
 from curses import wrapper
 
-BACKSPACE = 8
+BACKSPACE = 263
 ENTER = 10
-newline = ''
 c_prev = ord('1')
 
 
 # Register events to occur depending on what User has input
 def event_keys(stdscr, c, modes,):
-    global c_prev, newline, current_mode, move_direction
+    global c_prev, newline, current_mode
+    global boundary,  move_direction
     isNewLine = False
     move_direction = 'stop'
     if c == curses.KEY_UP:
@@ -28,7 +28,8 @@ def event_keys(stdscr, c, modes,):
     elif c == curses.KEY_RIGHT:
         move_direction = "right"
 
-    elif  (c_prev == ord('1') or c_prev == ord('2')\
+    # Change the mode setting if 1, 2 or 3 is pressed
+    elif (c_prev == ord('1') or c_prev == ord('2')\
             or c_prev == ord('3')) and c == ENTER:
         current_mode = modes[c_prev] # Select rover mode
         y,x = stdscr.getyx() # get current pos
@@ -36,9 +37,14 @@ def event_keys(stdscr, c, modes,):
         stdscr.clrtoeol()  # Erase the line to right of cursor
         stdscr.addstr(current_mode)
         stdscr.addstr(" Enter command: ")
+	boundary = len(current_mode + " Enter command: ")
+	newline = ''
 
+    # If backspace pressed then delete
     elif c == BACKSPACE:
-        stdscr.addstr(chr(c))
+	# Delte characters up to prompt command
+	if stdscr.getyx()[1] > boundary:
+        	stdscr.addstr(chr(8))
         stdscr.delch()
 
     elif c == ENTER:
@@ -57,28 +63,37 @@ def event_keys(stdscr, c, modes,):
 # Activte User interface for controlling System
 def activate_UI(stdscr):
     # Set default UI parameters
-    current_mode = modes[ord('1')]
+    global newline
+    global current_mode
     c = ENTER
     modes = {ord('1'): "<Demo Mode>",
              ord('2'): "<Pump Mode>",
              ord('3'): "<Vision Mode>"}
-    # Initialize User Inferface Window
-    stdscr.clear()
-    stdscr.refresh()
-    # Initialize image detection
+    current_mode = modes[ord('1')]
+    newline = ''
+    prev_time = time.time() # last time an arrow key was pressed
+    
+# Initialize image detection and System control class
     cnn = ImageDetection.PlantDetection()
     system = RaspiUI.SystemControl()
+
+    # Initialize User Inferface Window    
+    stdscr.clear()
+    stdscr.refresh()
+
     # Escape programming using q
     while c is not ord('q'):
         # New command message has been input
         if event_keys(stdscr, c, modes) is True:
-            RaspiUI.process_user_input(cnn, newline, current_mode)
+            #RaspiUI.process_user_input(cnn, newline, current_mode)
             newline = ''
 
+	# Check if arrow key was pressed
         elif move_direction is not 'stop':
-            # Check for move commands
-            RaspiUI.process_movements(move_direction, system, current_mode)
-            time.sleep(0.2)
+            # Send move command every 0.2 seconds 
+	    if time.time() - prev_time > 0.2:
+            	RaspiUI.process_movements(move_direction, system, current_mode, stdscr)
+		prev_time = time.time()
 
         stdscr.refresh() # Refresh the screen
         c = stdscr.getch() # returns key press values

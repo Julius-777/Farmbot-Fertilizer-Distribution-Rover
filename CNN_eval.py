@@ -27,7 +27,7 @@ class PlantDetection:
         # get dictionary of classes and invert dictionary to {0:"label_name", ...}
         self.class_dictionary = {0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Tomato"}
         # load saved model
-        self.restoredModel = models.load_model(saved_direc)
+        self.restoredModel = None #models.load_model(saved_direc)
         print("Loaded model from disk")
         self.camera = PiCamera(resolution=(160, 160), framerate=30) 
         print("Initialize camera sensor...")
