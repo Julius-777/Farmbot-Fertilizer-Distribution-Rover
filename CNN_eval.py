@@ -1,10 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/python -W ignore::DeprecationWarning
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import Sequential, models, utils
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 from picamera.array import PiRGBArray
 from picamera import PiCamera
-import os, time, cv2
+import os, time
 import numpy as np
 
 IMAGE_SIZE = 32 # Dimensions of loaded image
@@ -111,9 +111,14 @@ class PlantDetection:
 def main():
     cnn = PlantDetection()
     direc = cnn.get_data_path()
-    data_generator = cnn.prepare_images(directory=direc, class_mode=None)
-    predictions = cnn.get_predictions(data_generator, not(DISPLAY_ON))
-    print predictions
+    prediction = (0,0)
+    while True:    
+        data_generator = cnn.prepare_images(from_camera=True)
+        prediction = cnn.get_predictions(data_generator, data_type="from_camera")
+        print prediction
+        time.sleep(0.5)
+
+    print prediction
 
 if __name__ == "__main__":
     main()

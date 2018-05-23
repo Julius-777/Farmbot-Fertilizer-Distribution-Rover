@@ -1,9 +1,10 @@
- #!/usr/bin/python
+ #!/usr/bin/python -W ignore::DeprecationWarning
 import RaspiUI
 import CNN_eval as ImageDetection
 import time, os
 import curses
 from curses import wrapper
+import warnings
 
 BACKSPACE = 263
 ENTER = 10
@@ -11,7 +12,7 @@ c_prev = ord('1')
 
 
 # Register events to occur depending on what User has input
-def event_keys(stdscr, c, modes,):
+def event_keys(stdscr, c, modes):
     global c_prev, newline, current_mode
     global boundary,  move_direction
     isNewLine = False
@@ -32,7 +33,7 @@ def event_keys(stdscr, c, modes,):
 
     # Change the mode setting if 1, 2 or 3 is pressed
     elif (c_prev == ord('1') or c_prev == ord('2') or c_prev == ord('3'))\
-            and c == ENTER and x == (boundary + 1):
+            and c == ENTER and x <= (boundary + 1):
             current_mode = modes[c_prev] # Select rover mode
             stdscr.move(y, 0)  # Move to start of line
             stdscr.clrtoeol()  # Erase the line to right of cursor
@@ -81,10 +82,12 @@ def activate_UI(stdscr, cnn, system):
     # Escape programming using q
     while c is not ord('q'):
         # New command message has been input
-        if event_keys(stdscr, c, modes) is True:
-            stdscr.addstr(newline)
-            response = RaspiUI.process_user_input(cnn, newline, system, current_mode, stdscr)
-            newline = ''
+        if event_keys(stdscr, c, modes) == True:
+            if newline == "clear":
+                stdscr.clear()
+            else:
+                response = RaspiUI.process_user_input(cnn, newline, system, current_mode, stdscr)
+                newline = ''
             # One  message
             if type(response) is str:
                 message = response + "\n" + current_mode + " Enter command: "
@@ -100,13 +103,14 @@ def activate_UI(stdscr, cnn, system):
         elif move_direction != 'stop':
             # Send move command every 0.2 seconds 
 	    if time.time() - prev_time > 0.02:
-            	RaspiUI.process_movements(move_direction, system, current_mode, stdscr)
+            	RaspiUI.process_movements(move_direction, system, current_mode)
 		prev_time = time.time()
 
         stdscr.refresh() # Refresh the screen
         c = stdscr.getch() # returns key press values
 
 def main():
+    
     # Initialize image detection and System control class
     cnn = ImageDetection.PlantDetection()
     system = RaspiUI.SystemControl()

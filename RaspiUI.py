@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -W ignore::DeprecationWarning 
 import serial
 import time
 import json, requests
@@ -7,7 +7,8 @@ import cropNutrients
 grafana_path = 'https://farmbot-data.uqcloud.net/apix/record'  # URL logging path
 ports = {1:"/dev/ttyUSB0", 2:"/dev/ttyUSB1"}
 baudrate=9600
-# servo position 
+# servo position
+
 CENTRE_x = int(60) #default  position pan
 CENTRE_y = int(150) #default position tilt
 pan_pos = CENTRE_x
@@ -16,7 +17,7 @@ tilt_pos = CENTRE_y
 SUCCESSFUL_EXCECUTION = 1
 DEFAULT_MODE = 1 # Demo Mode
 DISPLAY_ON = True # display the stages in plant recognition on terminal
-
+SCAN_ON = True # scan for plant features
 # Mode settings for User commands
 list_modes = {1 : "<Demo Mode>", 2: "<Pump Mode>", 3: "<Vision Mode>"}
 # Logging data format
@@ -55,9 +56,9 @@ def pump_liquid(amount_ml):
         message = "Pump:fertilize:" + amount_ml + " ml;"
         ser.write(message.encode(encoding='UTF-8'))
         LOG["Tank_Level"] -= amount_ml
-        return "Fertilizer Left ["+ LOG["Tank_Level"]+"]"
+        return "Tank has ["+ LOG["Tank_Level"]+"] left"
     else:
-        return  " Tank Empty !! Refill Tank"
+        return  "Tank Empty !! Refill Tank"
 
 # Control Movements of fertilizer system on rover
 class SystemControl:
@@ -79,16 +80,16 @@ class SystemControl:
     def move_pump_right(self):
         global pan_pos
         if pan_pos >= 0:
-            pan_pos -= 2
+            pan_pos -= 4
             message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
             ser.write(message.encode(encoding='UTF-8'))
             return True 
         return False # Max angle reached
     # Move pump with left arrow
     def move_pump_left(self):
-        global pan_pos
+        global pan_pos 
         if pan_pos <= 140 :
-            pan_pos += 2
+            pan_pos += 4
             message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
             ser.write(message.encode(encoding='UTF-8'))
             return True
@@ -98,7 +99,7 @@ class SystemControl:
     def move_pump_down(self):
         global tilt_pos
         if tilt_pos >= 110:
-            tilt_pos -= 2
+            tilt_pos -= 4
             message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
             ser.write(message.encode(encoding='UTF-8'))
             return True
@@ -108,7 +109,7 @@ class SystemControl:
     def move_pump_up(self):
         global tilt_pos
         if tilt_pos <= 175:
-            tilt_pos += 2
+            tilt_pos += 4
             message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
             ser.write(message.encode(encoding='UTF-8'))
             return True
@@ -117,13 +118,14 @@ class SystemControl:
     # Recentre pump 
     def move_pump_centre(self, direction):
         global tilt_pos, pan_pos
+        global CENTRE_x, CENTRE_y
         if direction == 'pan':
-            pan_pos = CENTRE_X
+            pan_pos = CENTRE_x
         elif direction == 'tilt':
-            tilt_pos = CENTRE_Y
+            tilt_pos = CENTRE_y
         else:
-            pan_pos = CENTRE_X
-            tilt_pos = CENTRE_Y
+            pan_pos = CENTRE_x
+            tilt_pos = CENTRE_y
       
         message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
         ser.write(message.encode(encoding='UTF-8'))
@@ -150,7 +152,7 @@ def log_data(**args):
     return req
 
 # Process arrow key presses from terminal to move peripherals
-def process_movements(direction, system, current_mode, st):
+def process_movements(direction, system, current_mode):
     # Demo Mode
     if current_mode == list_modes[1]:
         if direction == 'up': # Up arrow = forward
@@ -178,13 +180,13 @@ def process_movements(direction, system, current_mode, st):
             system.move_pump_up()
 
 # detect plant type (If scan=True system looks up and down)
-def detect_crop(cnn, scan_on=False):
-    global system
-    predictions = (0,0)
+def detect_crop(cnn, scan_on):
+    global system, stream
+    prediction = (0,0)
     scanup = True
     scandown = True
     # Accept detection with a score above 80% accuracy
-    while predictions[1] < 0.70:
+    while prediction[1] < 0.70:
         image_array = cnn.prepare_images(from_camera=True) # Get piCam image as numpy array
         prediction = cnn.get_predictions(image_array,
                                           data_type="from_camera",
@@ -194,22 +196,20 @@ def detect_crop(cnn, scan_on=False):
             scanup = system.move_pump_up()
 
         elif scandown == True and scan_on == True:
-            scan1 = system.move_pump_down()
+            scandown = system.move_pump_down()
 
         elif scan_on == True:
             system.move_pump_centre('all') # recentre nozzle
             return prediction
-
-        time.sleep(0.2) # check 3 frames per second
-
+    
     system.move_pump_centre('tilt')
     return prediction
 
 # In demo mode rover will fertilizer both sides of the garden row
-def fertilize_row(row, cnn, s):
-    global system
+def fertilize_row(row, cnn):
+    global system, SCAN_ON
     # position nozzle Left side
-    positon = {0:"left", 1:"right"}
+    position = {0:"left", 1:"right"}
     stage = "flowering"
     message = []
     for i in range(2):
@@ -222,7 +222,7 @@ def fertilize_row(row, cnn, s):
                 pass
 
         # Detect plant type
-        prediction = detect_crop(cnn, scan=True)
+        prediction = detect_crop(cnn, SCAN_ON)
         if prediction[1] > 0.70:    
             # Select plant from nutrient database and select growth stage
             plant = cropNutrients.List.get(prediction[0]) 
@@ -232,19 +232,19 @@ def fertilize_row(row, cnn, s):
 
         else:
             message.append("Error! Could not detect crop in row[%d] column[%d]"\
-                    %(row,  position[i]))
-    s.addstr(message[0] + message[1])  
+                    %(row,  i))
     return message
 
 # Process user input commands from terminal
-def process_user_input(cnn, new_line, sys, current_mode, s):
+def process_user_input(cnn, new_line, sys, current_mode, std):
     msg = new_line.split(' ')
-    global system
+    global system, stream, SCAN_ON
     system = sys
+    stream  = std
     #Check if Mode == Demo Mode and command is valid
     if current_mode == list_modes.get(DEFAULT_MODE):
         if msg[0] == 'fertilize' and msg[1] == 'row' and is_number(msg[2]):
-            return fertilize_row(int(msg[2]), cnn, s)
+            return fertilize_row(int(msg[2]), cnn)
         
         else:
             return "Invalid command! Use cmd[fertilize row]"
@@ -258,7 +258,7 @@ def process_user_input(cnn, new_line, sys, current_mode, s):
     # Check if Mode ==  Vision Mode
     else:
         if new_line == "detect":
-            predictions = detect_crop(cnn)
+            predictions = detect_crop(cnn, not(SCAN_ON))
             return  "Predicted label - %s, Score: [%5f]" % (predictions[0], predictions[1])
 
         else:
