@@ -85,20 +85,19 @@ class PlantDetection:
             return args.get("data_type") +  " is Invalid data_type for function"
                                 
         predicted_labels = predictions_array.argmax(axis=-1) # predicted class/label for each image
-        list_of_results = [] # Hold predicted labels with corresponding scores
+        list_of_results = '' # Hold predicted labels with corresponding scores
 
         for i, prediction in zip(range(len(predicted_labels)), predicted_labels):
             result = (self.class_dictionary.get(prediction), max(predictions_array[i]))
             # display the predictions on screen
             if args.get("display") == True and args.get("data_type")=="from_directory":
                 correct_labels = generator.classes # get verified labels of input test data
-                list_of_results.append(result)
-                return " Correct label - %s, Predicted label - %s,\
-                Score: [%5f]" % (self.class_dictionary.get(correct_labels[i]), result[0], result[1])
-            elif args.get("display") == True:
-		return  predictions_array # scores for all classes
+                list_of_results += " Correct label - %s, Predicted label - %s,\
+                Score: [%5f]\n" % (self.class_dictionary.get(correct_labels[i]), result[0], result[1])
+            elif args.get("data_type") == "from_camera":
+	        return result # prediction for single image
               
-        return result 
+        return list_of_results # predicions made for set of data
 
     # Get image data from camera to input to inference model
     def get_image_data(self):

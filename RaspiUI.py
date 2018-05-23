@@ -1,26 +1,35 @@
 #!/usr/bin/python
 import serial
 import time
+import json, requests
+import cropNutrients 
 
-port = {1:"/dev/ttyUSB0", 2:"/dev/ttyUSB1"}
+grafana_path = 'https://farmbot-data.uqcloud.net/apix/record'  # URL logging path
+ports = {1:"/dev/ttyUSB0", 2:"/dev/ttyUSB1"}
 baudrate=9600
-CENTRE_x = int(60)
-CENTRE_y = int(150)
-SUCCESSFUL_EXCECUTION = 1
-DEFAULT_MODE = 1
-DISPLAY_ON = True # display the stages in plant recognition on terminal
-global s
-# Serial comms arduino <--> Raspi
-try:
-    ser = serial.Serial(port[1], baudrate, timeout=0.1)
-except SerialException:
-    ser = serial.Serial(port[2], baudrate, timeout=0.1)
-
+# servo position 
+CENTRE_x = int(60) #default  position pan
+CENTRE_y = int(150) #default position tilt
 pan_pos = CENTRE_x
 tilt_pos = CENTRE_y
+
+SUCCESSFUL_EXCECUTION = 1
+DEFAULT_MODE = 1 # Demo Mode
+DISPLAY_ON = True # display the stages in plant recognition on terminal
+
+# Mode settings for User commands
 list_modes = {1 : "<Demo Mode>", 2: "<Pump Mode>", 3: "<Vision Mode>"}
-LOG = {"Plant": None, "Stage": None, "used_fertilizer": None,
-                            "Tank_Level": 1500} # format of logging message
+# Logging data format
+LOG = {"plant": None, 
+	"stage": None, 
+	"fertilizer": None,
+        "Tank_Level": 500} # format of logging message
+
+# Serial comms arduino <--> Raspi
+try:
+    ser = serial.Serial(ports[1], baudrate, timeout=0.1)
+except Exception:
+    ser = serial.Serial(ports[2], baudrate, timeout=0.1)
 
 # Read serial buffer until empty
 def read_until_empty():
@@ -41,12 +50,14 @@ def is_number(s):
 
 # Function tells arduino to pump specified amount of liquid
 def pump_liquid(amount_ml):
-    message = "Pump:fertilize:" + amount_ml + " ml;"
-    ser.write(message.encode(encoding='UTF-8'))
-
-# In demo mode rover will fertilizer both sides of the garden row
-def fertilize_row():
-    pass
+    global LOG
+    if LOG["Tank_Level"] > 0:
+        message = "Pump:fertilize:" + amount_ml + " ml;"
+        ser.write(message.encode(encoding='UTF-8'))
+        LOG["Tank_Level"] -= amount_ml
+        return "Fertilizer Left ["+ LOG["Tank_Level"]+"]"
+    else:
+        return  " Tank Empty !! Refill Tank"
 
 # Control Movements of fertilizer system on rover
 class SystemControl:
@@ -66,41 +77,81 @@ class SystemControl:
 
     # Move pump with right arrow
     def move_pump_right(self):
-        global pan_pos, s
+        global pan_pos
         if pan_pos >= 0:
             pan_pos -= 2
-        message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
-        ser.write(message.encode(encoding='UTF-8'))
-
+            message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
+            ser.write(message.encode(encoding='UTF-8'))
+            return True 
+        return False # Max angle reached
     # Move pump with left arrow
     def move_pump_left(self):
-        global pan_pos, s
+        global pan_pos
         if pan_pos <= 140 :
-           pan_pos += 2
-        message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
-        ser.write(message.encode(encoding='UTF-8'))
+            pan_pos += 2
+            message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
+            ser.write(message.encode(encoding='UTF-8'))
+            return True
+        return False
 
     # Move pump with down arrow
     def move_pump_down(self):
         global tilt_pos
         if tilt_pos >= 110:
             tilt_pos -= 2
-        message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
-        ser.write(message.encode(encoding='UTF-8'))
+            message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
+            ser.write(message.encode(encoding='UTF-8'))
+            return True
+        return False
 
     # Move pump with up arrow
     def move_pump_up(self):
         global tilt_pos
         if tilt_pos <= 175:
             tilt_pos += 2
+            message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
+            ser.write(message.encode(encoding='UTF-8'))
+            return True
+        return False
+    
+    # Recentre pump 
+    def move_pump_centre(self, direction):
+        global tilt_pos, pan_pos
+        if direction == 'pan':
+            pan_pos = CENTRE_X
+        elif direction == 'tilt':
+            tilt_pos = CENTRE_Y
+        else:
+            pan_pos = CENTRE_X
+            tilt_pos = CENTRE_Y
+      
         message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
         ser.write(message.encode(encoding='UTF-8'))
+        
+# Log data to Farmdata Grafana Database for visualization using json string 
+def log_data(**args):
+    plant = args.get("plant", None)
+    ml = args.get("liquid", None)
+    current_stage = args.get("stage", None)
+
+    ts = int(time.time())
+    myUSER = "s4358870"
+    stages = {1:"germination", 2:"growth", 3:"flowering"} # Plant growth stages
+    myPASS = "RelativelyDeathLanesAptly"
+
+    req = json.dumps({"userid":myUSER, "passhash":myPASS,
+      "timestamp": int(ts *1e3), # time
+      "tags":{"plant":plant, "stage": current_stage}, # meta data
+      "data":{"liquid_ml":ml} # data
+    })
+    
+    # Send data to farmbot
+    resp = requests.post(grafana_path, req) # Send JSON string
+    return req
 
 # Process arrow key presses from terminal to move peripherals
 def process_movements(direction, system, current_mode, st):
     # Demo Mode
-    global s
-    s = st
     if current_mode == list_modes[1]:
         if direction == 'up': # Up arrow = forward
             system.move_rover('forward', None)
@@ -126,36 +177,89 @@ def process_movements(direction, system, current_mode, st):
         elif direction == 'down':
             system.move_pump_up()
 
-# Process typed user input commands from terminal
-def process_user_input(cnn, new_line, current_mode):
+# detect plant type (If scan=True system looks up and down)
+def detect_crop(cnn, scan_on=False):
+    global system
+    predictions = (0,0)
+    scanup = True
+    scandown = True
+    # Accept detection with a score above 80% accuracy
+    while predictions[1] < 0.70:
+        image_array = cnn.prepare_images(from_camera=True) # Get piCam image as numpy array
+        prediction = cnn.get_predictions(image_array,
+                                          data_type="from_camera",
+                                          display=True)# display all predictions
+        # scan the plant to detect
+        if scanup == True and scan_on == True:
+            scanup = system.move_pump_up()
+
+        elif scandown == True and scan_on == True:
+            scan1 = system.move_pump_down()
+
+        elif scan_on == True:
+            system.move_pump_centre('all') # recentre nozzle
+            return prediction
+
+        time.sleep(0.2) # check 3 frames per second
+
+    system.move_pump_centre('tilt')
+    return prediction
+
+# In demo mode rover will fertilizer both sides of the garden row
+def fertilize_row(row, cnn, s):
+    global system
+    # position nozzle Left side
+    positon = {0:"left", 1:"right"}
+    stage = "flowering"
+    message = []
+    for i in range(2):
+        if i == 1:# fertilize left row
+            while system.move_pump_left() == True:
+                pass
+        
+        else:# fertilize right row
+            while system.move_pump_right() == True:
+                pass
+
+        # Detect plant type
+        prediction = detect_crop(cnn, scan=True)
+        if prediction[1] > 0.70:    
+            # Select plant from nutrient database and select growth stage
+            plant = cropNutrients.List.get(prediction[0]) 
+            # fertilizer amount for selected growth stage
+            msg = pump_liquid(plant.get(stage)) 
+            message.append(msg)
+
+        else:
+            message.append("Error! Could not detect crop in row[%d] column[%d]"\
+                    %(row,  position[i]))
+    s.addstr(message[0] + message[1])  
+    return message
+
+# Process user input commands from terminal
+def process_user_input(cnn, new_line, sys, current_mode, s):
     msg = new_line.split(' ')
+    global system
+    system = sys
     #Check if Mode == Demo Mode and command is valid
     if current_mode == list_modes.get(DEFAULT_MODE):
-        if msg[0] == 'fertilize' and msg[1] == 'row':
-            fertilize_row()
-            return ''
+        if msg[0] == 'fertilize' and msg[1] == 'row' and is_number(msg[2]):
+            return fertilize_row(int(msg[2]), cnn, s)
+        
         else:
             return "Invalid command! Use cmd[fertilize row]"
     #Check if Mode == Pump Mode and command is valid
     elif current_mode == list_modes.get(2):
         if is_number(msg[0]) and msg[1] == "ml":
-            pump_liquid(msg[0])
-            return ''
+            return pump_liquid(msg[0])
+
         else:
             return "Invalid command! Must have formart e.g. [10 ml]"
     # Check if Mode ==  Vision Mode
     else:
         if new_line == "detect":
-            predictions = [0,0]
-            # Accept detection with a score above 80% accuracy
-            while predictions[1] < 0.90:
-                image_array = cnn.prepare_images(from_camera=True) # Get piCam image as numpy array
-                predictions = cnn.get_predictions(image_array,
-                                                 data_type="from_camera",
-                                                 display=True)# display all predictions
-                time.sleep(0.3) # check 3 frames per second
-            #return  "Predicted label - %s, Score: [%5f]" % (predictions[0],
-            #                                              predictions[1])
+            predictions = detect_crop(cnn)
+            return  "Predicted label - %s, Score: [%5f]" % (predictions[0], predictions[1])
 
         else:
             return "Invalid command! Use [detect]"

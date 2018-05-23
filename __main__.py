@@ -16,6 +16,8 @@ def event_keys(stdscr, c, modes,):
     global boundary,  move_direction
     isNewLine = False
     move_direction = 'stop'
+    y,x = stdscr.getyx() # get current cursor pos
+    
     if c == curses.KEY_UP:
         move_direction = 'up'
 
@@ -29,16 +31,15 @@ def event_keys(stdscr, c, modes,):
         move_direction = "right"
 
     # Change the mode setting if 1, 2 or 3 is pressed
-    elif (c_prev == ord('1') or c_prev == ord('2')\
-            or c_prev == ord('3')) and c == ENTER:
-        current_mode = modes[c_prev] # Select rover mode
-        y,x = stdscr.getyx() # get current pos
-        stdscr.move(y, 0)  # Move to start of line
-        stdscr.clrtoeol()  # Erase the line to right of cursor
-        stdscr.addstr(current_mode)
-        stdscr.addstr(" Enter command: ")
-	boundary = len(current_mode + " Enter command: ")
-	newline = ''
+    elif (c_prev == ord('1') or c_prev == ord('2') or c_prev == ord('3'))\
+            and c == ENTER and x == (boundary + 1):
+            current_mode = modes[c_prev] # Select rover mode
+            stdscr.move(y, 0)  # Move to start of line
+            stdscr.clrtoeol()  # Erase the line to right of cursor
+            stdscr.addstr(current_mode)
+            stdscr.addstr(" Enter command: ")
+	    boundary = len(current_mode + " Enter command: ")
+	    newline = ''
 
     # If backspace pressed then delete
     elif c == BACKSPACE:
@@ -63,8 +64,7 @@ def event_keys(stdscr, c, modes,):
 # Activte User interface for controlling System
 def activate_UI(stdscr, cnn, system):
     # Set default UI parameters
-    global newline
-    global current_mode
+    global newline, current_mode, boundary
     c = ENTER
     modes = {ord('1'): "<Demo Mode>",
              ord('2'): "<Pump Mode>",
@@ -72,7 +72,8 @@ def activate_UI(stdscr, cnn, system):
     current_mode = modes[ord('1')]
     newline = ''
     prev_time = time.time() # last time an arrow key was pressed
-    
+    boundary = len(current_mode + " Enter command: ")
+
     # Initialize User Inferface Window    
     stdscr.clear()
     stdscr.refresh()
@@ -81,11 +82,22 @@ def activate_UI(stdscr, cnn, system):
     while c is not ord('q'):
         # New command message has been input
         if event_keys(stdscr, c, modes) is True:
-            response = RaspiUI.process_user_input(cnn, newline, current_mode)
+            stdscr.addstr(newline)
+            response = RaspiUI.process_user_input(cnn, newline, system, current_mode, stdscr)
             newline = ''
-            stdscr.addstr(response + '\n' + current_mode + " Enter command ")
+            # One  message
+            if type(response) is str:
+                message = response + "\n" + current_mode + " Enter command: "
+                stdscr.addstr(message)
+            # Two messages
+            elif type(response) is list:
+                message = response[0] + "\n"+ response[1] + "\n"+ current_mode + " Enter command: "
+                stdscr.addstr(message)
+            # Incorrect input
+            else:
+                stdscr.addstr("Error!!\n") 
 	# Check if arrow key was pressed
-        elif move_direction is not 'stop':
+        elif move_direction != 'stop':
             # Send move command every 0.2 seconds 
 	    if time.time() - prev_time > 0.02:
             	RaspiUI.process_movements(move_direction, system, current_mode, stdscr)
