@@ -3,7 +3,7 @@ import RaspiUI
 import CNN_eval as ImageDetection
 import time, os
 import curses
-from curses import wrapper
+from curses import wrapper 
 import warnings
 
 BACKSPACE = 263
@@ -83,11 +83,14 @@ def activate_UI(stdscr, cnn, system):
     while c is not ord('q'):
         # New command message has been input
         if event_keys(stdscr, c, modes) == True:
-            if newline == "clear":
-                stdscr.clear()
-            else:
-                response = RaspiUI.process_user_input(cnn, newline, system, current_mode, stdscr)
-                newline = ''
+            # process user input
+            try:
+                response = RaspiUI.process_user_input(cnn, newline, 
+                            system, current_mode, stdscr)
+            except ValueError:
+                stream.addstr("Error! Invalid number of arguments\n"\
+                                + current_mode + " Enter command: ")
+            newline = ''
             # One  message
             if type(response) is str:
                 message = response + "\n" + current_mode + " Enter command: "

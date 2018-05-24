@@ -20,11 +20,8 @@ DISPLAY_ON = True # display the stages in plant recognition on terminal
 SCAN_ON = True # scan for plant features
 # Mode settings for User commands
 list_modes = {1 : "<Demo Mode>", 2: "<Pump Mode>", 3: "<Vision Mode>"}
-# Logging data format
-LOG = {"plant": None, 
-	"stage": None, 
-	"fertilizer": None,
-        "Tank_Level": 500} # format of logging message
+# Liquid Tank Levels
+TANK_LEVEL =  int(1500)
 
 # Serial comms arduino <--> Raspi
 try:
@@ -51,12 +48,12 @@ def is_number(s):
 
 # Function tells arduino to pump specified amount of liquid
 def pump_liquid(amount_ml):
-    global LOG
-    if LOG["Tank_Level"] > 0:
-        message = "Pump:fertilize:" + amount_ml + " ml;"
+    global TANK_LEVEL 
+    if TANK_LEVEL> 0:
+        message = "Pump:fertilize:" + str(amount_ml) + " ml;"
         ser.write(message.encode(encoding='UTF-8'))
-        LOG["Tank_Level"] -= amount_ml
-        return "Tank has ["+ LOG["Tank_Level"]+"] left"
+        TANK_LEVEL -= int(amount_ml)
+        return "Tank has ["+ str(TANK_LEVEL)+" ml] left"
     else:
         return  "Tank Empty !! Refill Tank"
 
@@ -85,6 +82,7 @@ class SystemControl:
             ser.write(message.encode(encoding='UTF-8'))
             return True 
         return False # Max angle reached
+    
     # Move pump with left arrow
     def move_pump_left(self):
         global pan_pos 
@@ -129,7 +127,7 @@ class SystemControl:
       
         message = "PanTilt:angle:" + str(pan_pos) + ',' + str(tilt_pos) + ';'
         ser.write(message.encode(encoding='UTF-8'))
-        
+
 # Log data to Farmdata Grafana Database for visualization using json string 
 def log_data(**args):
     plant = args.get("plant", None)
@@ -227,12 +225,18 @@ def fertilize_row(row, cnn):
             # Select plant from nutrient database and select growth stage
             plant = cropNutrients.List.get(prediction[0]) 
             # fertilizer amount for selected growth stage
-            msg = pump_liquid(plant.get(stage)) 
+            ml = plant.get(stage)
+            msg = pump_liquid(ml) 
+            # Log data to Farmbot database
+            resp = log_data(plant=prediction[0], liquid=ml, stage="flowering")      
+            message.append("\n Plant %s was given %d ml. " %(prediction[0], ml)) 
+            message.append("Log Status: %s"%(resp))
             message.append(msg)
-
         else:
             message.append("Error! Could not detect crop in row[%d] column[%d]"\
                     %(row,  i))
+    # Re-centre pump
+    system.move_pump_centre('all') 
     return message
 
 # Process user input commands from terminal
@@ -241,8 +245,16 @@ def process_user_input(cnn, new_line, sys, current_mode, std):
     global system, stream, SCAN_ON
     system = sys
     stream  = std
+    # Update value of liquid left in tank 
+    if msg[0] == "refill" and is_number(msg[1]):
+        TANK_LEVEL =  int(msg[1])
+        return "Tank level updated"
+    # Clear screen
+    elif new_line == "clear":
+        stream.clear()
+        return ''
     #Check if Mode == Demo Mode and command is valid
-    if current_mode == list_modes.get(DEFAULT_MODE):
+    elif current_mode == list_modes.get(DEFAULT_MODE):
         if msg[0] == 'fertilize' and msg[1] == 'row' and is_number(msg[2]):
             return fertilize_row(int(msg[2]), cnn)
         

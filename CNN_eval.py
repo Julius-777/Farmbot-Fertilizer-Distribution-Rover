@@ -4,19 +4,24 @@ from tensorflow.python.keras import Sequential, models, utils
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 from picamera.array import PiRGBArray
 from picamera import PiCamera
-import os, time
+import os, time, CNN
 import numpy as np
 
 IMAGE_SIZE = 32 # Dimensions of loaded image
 BATCH_SIZE = 5
 main_path = '/Home/pi/Kilimanjaro' # root directory
 # path to load the model that will be restored
-saved_direc = os.path.join(os.getcwd(), 'cnn_model_3.h5')
+saved_direc = os.path.join(os.getcwd(), 'savedh5/cnn_model_weights_6.h5')
 # path to directory containing images to evaluate
 eval_dataset = os.path.join(main_path, 'eval_dataset')
 
 # all new operations will be in test mode from now on
 K.set_learning_phase(0)
+
+def load_model_from_weights(directory):
+    model = CNN.new_model()
+    model.load_weights(directory)
+    return model
 
 class PlantDetection:
 
@@ -25,9 +30,10 @@ class PlantDetection:
         self.test_gen = ImageDataGenerator(rescale=1.0 / 255,
                                     data_format='channels_last')
         # get dictionary of classes and invert dictionary to {0:"label_name", ...}
-        self.class_dictionary = {0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Tomato"}
+        #self.class_dictionary = {0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Tomato"}
+        self.class_dictionary ={0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Spinach", 4:"Strawberry", 5: "Tomato"}
         # load saved model
-        self.restoredModel = models.load_model(saved_direc)
+        self.restoredModel =  load_model_from_weights(saved_direc)# models.load_model(saved_direc)
         print("Loaded model from disk")
         self.camera = PiCamera(resolution=(720, 720), framerate=15) 
         print("Initialize camera sensor...")
@@ -104,7 +110,7 @@ class PlantDetection:
         with PiRGBArray(self.camera, size=(32, 32)) as output:            
             self.camera.capture(output, 'rgb', resize=(32, 32))
             tensor = output.array*1. / 255 # Normalize rgb values
-            tensor = np.array([tensor.astype('float64')], dtype='float64')
+            tensor = np.array([tensor.astype('float32')], dtype='float32')
             output.truncate(0)
             return tensor
 
