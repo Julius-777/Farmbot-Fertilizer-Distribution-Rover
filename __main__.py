@@ -97,8 +97,9 @@ def activate_UI(stdscr, cnn, system):
                 stdscr.addstr(message)
             # Two messages
             elif type(response) is list:
-                message = response[0] + "\n"+ response[1] + "\n"+ current_mode + " Enter command: "
-                stdscr.addstr(message)
+                for message in response:
+                    stdscr.addstr(message + "\n")
+                stdscr.addstr(current_mode + " Enter command: ")
             # Incorrect input
             else:
                 stdscr.addstr("Error!!\n") 

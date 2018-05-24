@@ -147,7 +147,7 @@ def log_data(**args):
     
     # Send data to farmbot
     resp = requests.post(grafana_path, req) # Send JSON string
-    return req
+    return resp
 
 # Process arrow key presses from terminal to move peripherals
 def process_movements(direction, system, current_mode):
@@ -211,7 +211,7 @@ def fertilize_row(row, cnn):
     stage = "flowering"
     message = []
     for i in range(2):
-        if i == 1:# fertilize left row
+        if i == 0:# fertilize left row
             while system.move_pump_left() == True:
                 pass
         
@@ -229,13 +229,14 @@ def fertilize_row(row, cnn):
             msg = pump_liquid(ml) 
             # Log data to Farmbot database
             resp = log_data(plant=prediction[0], liquid=ml, stage="flowering")      
-            message.append("\n Plant %s was given %d ml. " %(prediction[0], ml)) 
-            message.append("Log Status: %s"%(resp))
-            message.append(msg)
+            message.append(" Plant %s on %s column was given %d ml" %(prediction[0], position[i],  ml)) 
+            message.append("FarmData Logging... %s"%(resp))
+
         else:
             message.append("Error! Could not detect crop in row[%d] column[%d]"\
                     %(row,  i))
-    # Re-centre pump
+    # Re-centre pump and update tank level
+    message.append(msg)
     system.move_pump_centre('all') 
     return message
 
