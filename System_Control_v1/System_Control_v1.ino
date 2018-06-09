@@ -1,12 +1,12 @@
 /*
-  Example raspiCmd Serial Passthrough Sketch
+  System Hardware Control Sketch
   by: Julius Miyumo
   Farmbot Theisis
-  date: 19 April 2018
+  date: 19 May 2018
 
-  Uses RN-42 raspiCmd module to
-  communicate at 9600 bps (from 115200), and passes any serial
-  data between Serial Monitor and raspiCmd module.
+  The following code recieves commands from the pi via serial
+  and executes them to control the wheels, pump and Pan/Tilt servos
+  of the rover
 */
 #include <Adafruit_MotorShield.h>
 #include <stdio.h>
@@ -197,10 +197,13 @@ void loop()
 {
   if (Serial.available()) // If serial monitor used
   {
-    /* Incoming Message Formart: */
-    //   Exg PanTilt:angle:10,10
-    //   Exg Pump:fertilize:20 ml
-    //   Exg Move:forward:10 cm or turn:left or turn:right
+    /* Incoming Message Formart From The Pi: */
+    //  E.g PanTilt:angle:70,150
+    //  E.g Pump:fertilize:20 ml
+    //  E.g Move:forward:10 cm
+    //  E.g Move:forward:10 cm
+    //  E.g  Move:turn:left
+    //  E.g  Move:turn:right
     String message = Serial.readStringUntil(';');//read line message
     int success = executeCommand(message);
     Serial.println(success);
