@@ -3,19 +3,24 @@ from tensorflow.python.keras import Sequential, models, utils
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 #from picamera.array import PiRGBArray
 #from picamera import PiCamera
-import os, time#, cv2
+import os, time, CNN
 import numpy as np
 
 IMAGE_SIZE = 32 # Dimensions of loaded image
-BATCH_SIZE = 5
+BATCH_SIZE = 20
 main_path = 'C:\\Users\\jjmiy_000\\Documents\\Github\\' # root directory
 # path to load the model that will be restored
-saved_direc = os.path.join(os.getcwd(), 'savedh5\cnn_model_4.h5')
+saved_direc = os.path.join(os.getcwd(), 'savedh5\cnn_model_6.h5')
 # path to directory containing images to evaluate
-eval_dataset = os.path.join(main_path, 'eval_dataset')
+eval_dataset = os.path.join(main_path, 'eval_dataset_2')
 
 # all new operations will be in test mode from now on
 K.set_learning_phase(0)
+
+def load_model_from_weights():
+    model = CNN.new_model()
+    model.load_weights(saved_direc)
+    return model
 
 class PlantDetection:
 
@@ -24,7 +29,7 @@ class PlantDetection:
         self.test_gen = ImageDataGenerator(rescale=1.0 / 255,
                                     data_format='channels_last')
         # get dictionary of classes and invert dictionary to {0:"label_name", ...}
-        self.class_dictionary = {0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Tomato"}
+        self.class_dictionary = {0:"Broccoli", 1:"Cabbage", 2:"Onion", 3:"Spinach", 4:"Strawberry", 5: "Tomato"}
         # load saved model
         self.restoredModel = models.load_model(saved_direc)
         print("Loaded model from disk")
@@ -83,7 +88,7 @@ class PlantDetection:
                 print(" Correct label - %s, Predicted label - %s, Score: [%5f]"
                     % (self.class_dictionary.get(correct_labels[i]), result[0],
                         result[1]))
-        return list_of_results
+        return predictions_array
 
     # Get image data from camera to input to inference model
     def get_image_data(self):
@@ -95,6 +100,12 @@ class PlantDetection:
 ##            pi_cam.capture(raw, format='rgb') # Captured image in rgb format
 ##            frame = raw.array # get image as numpy array
         return frame
-
+def main():
+    detector = PlantDetection()
+    generator = detector.prepare_images(directory=eval_dataset,
+                                        class_mode='categorical')
+    array = detector.get_predictions(generator, display=True)
+    #print("\n\n", array)
+    detector.test_model(generator, display=True)
 if __name__ == "__main__":
     main()

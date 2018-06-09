@@ -2,26 +2,17 @@ import os
 import json
 import requests
 import time
+from flask import Flask
+url_path = 'https://farmbot-data.uqcloud.net/apix/record'
+url_path2 =
+test = {"Plant": "tomato","Tank_Level": 1500}
 
-# Construct JSON Message to send to Farmbot Database
+application = Flask(__name__)
+# Map Url to  a return value of function home
+@application.route('/', methods=['GET', ' POST'])
+def home(): # Home page
 
-path = 'https://farmbot-data.uqcloud.net/apix/record'
+    return "Farmbot Fertilizer System"
 
-def logging_data(args):
-    plant = args.get("plant", default=None)
-    liquid_ml = args.get("liquid",default=None)
-    current_stage = args.get("stage",default=None)
-
-    ts = int(time.time())
-    myUSER = "s4358870"
-    stages = {1:"seedling", 2:"growing", 3:"flowering"} # Plant growth stages
-    myPASS = "RelativelyDeathLanesAptly"
-    req = json.dumps({"userid":myUSER,"passhash":myPASS,
-      "timestamp": int(ts *1e3), # time in milliseconds ( need times by 1000)
-      "tags":{"location":"indoor"},
-      "data":{"fertilizer":liquid_ml,
-            "growth_stage":stages[current_stage]}
-    })
-    resp = requests.post(path, req) # Send JSON string
-    print(resp)
-    return resp
+if __name__ == "__main__":
+    application.run(debug=True) #Start this webserver
