@@ -40,7 +40,6 @@ saved_direc = os.path.join(os.getcwd(), 'cnn_model_6.h5')
 # generate a neural network model with the following architecture
 def new_model():
     inferenceModel = tf.keras.Sequential() # Builds linear stack of layers for model
-
     input_shape = (IMAGE_SIZE, IMAGE_SIZE, 3) # input has form (samples, height, width, channels)
     # Layer 1 - Conv(32) -> Relu
     inferenceModel.add(Convolution2D(CONV1_DEPTH, FILTER_SIZE, input_shape=input_shape,
