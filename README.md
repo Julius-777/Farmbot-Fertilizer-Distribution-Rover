@@ -8,5 +8,18 @@ This project was created for my Electrical Engineering Undergraduate Honours The
 * OpenCV was used for preprocessing and transforming image data into Numpy arrays that could be analyzed by the Image recognition Deep Learning Model
 * RasPi was interfaced with Arduino microcontroller running C++ code controlling the hardware modules e.g. motors, pumps, wifi.
 
+## Prerequisites
+Please Note more detailed setup is contained in the thesis report. That being said key installations required are:
+* Tensorflow
+* Keras
+* OpenCV
+* Numpy
+* Raspi Zero W running Debian Linux
+* Arduino Uno
+
  ## License
 This project is licensed under the MIT License 
+
+## Acknowledgments
+Inspiration and code snippets.
+* [boppreh](https://github.com/boppreh/keyboard) for keyboard control python library
