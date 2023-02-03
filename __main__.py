@@ -1,5 +1,5 @@
 import Raspi_UI, WebAPI
-import CNN_eval as ImageDetection
+from image_recognition import CNN_eval as ImageDetection
 import time, os
 
 def main():
