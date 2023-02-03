@@ -1,5 +1,5 @@
 # Fertilizer Distribution Rover
-This project was created for my Final Year Honours Thesis Project for B.E Electrical Engineering at The University of Queensland which recieved a distinction. The aim of the project was to designed and build a semi-autonomous fertilizer distribution rover as an extension of the [farmbot](https://farm.bot/) open source project. Feel free to view my [Thesis Report](https://drive.google.com/file/d/1nP5PC57npGuRtNQ3U67S4gIUgEPupZ8T/view?usp=sharing).
+This project was created for my Electrical Engineering Undergraduate Honours Thesis at The University of Queensland which recieved a distinction. The aim of the project was to designed and build a semi-autonomous fertilizer distribution rover as an extension of the [farmbot](https://farm.bot/) open source project. Feel free to view my [Thesis Report](https://drive.google.com/file/d/1nP5PC57npGuRtNQ3U67S4gIUgEPupZ8T/view?usp=sharing).
  
  ## Summary
  The following technologies were used:
